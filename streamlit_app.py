@@ -24,6 +24,7 @@ st.markdown("""
     }
     .menu-card {
         background-color: white;
+        background-color: black;
         padding: 20px;
         border-radius: 15px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -69,13 +70,96 @@ def delete_task(index):
 
 # --- SIDEBAR MENU ---
 st.sidebar.title("📚 Menu Dashboard")
-menu_options = ["🏠 Dashboard", "✅ To-Do List", "⏱️ Timer Belajar", "🎵 Musik Fokus", "🎨 Indikator Warna"]
+menu_options = ["🏠 Dashboard", "🧪ChemClass-Indicator", "✅ To-Do List", "⏱️ Study timer", "🎵 lo-fi"]
 selected_menu = st.sidebar.radio("Pilih Menu:", menu_options, index=menu_options.index(st.session_state.current_menu) if st.session_state.current_menu in menu_options else 0)
 
 st.session_state.current_menu = selected_menu
 
 # --- LOGIKA TAMPILAN PER MENU ---
 
+# ==========================================
+# TAB 1: LAB SIMULATOR
+# ==========================================
+with menu[0]:
+    col_input, col_display = st.columns([5, 7])
+    
+    with col_input:
+        st.subheader("💡 Parameter Simulasi")
+        
+        # Pilihan Preset Senyawa
+        preset_names = [chem["name"] for chem in CHEMICALS]
+        pilihan_preset = st.selectbox("Pilih Preset Zat Kimia:", preset_names, index=2) # Default cuka
+        selected_chem = next(chem for chem in CHEMICALS if chem["name"] == pilihan_preset)
+        
+        # Pilihan Indikator
+        pilihan_ind = st.selectbox(
+            "Pilihan Kertas Indikator:",
+            options=list(INDICATORS.keys()),
+            format_func=lambda x: INDICATORS[x]["name"]
+        )
+        selected_ind_data = INDICATORS[pilihan_ind]
+        
+        # Slider pH Manual
+        st.write("---")
+        st.markdown("**Kontrol pH Manual (Dial):** Modifikasi nilai derajat keasaman secara langsung")
+        simulated_ph = st.slider("Mengatur pH:", min_value=0.0, max_value=14.0, value=selected_chem["pH"], step=0.1)
+
+    with col_display:
+        st.subheader("🔮 Simulator Beaker Reaktif")
+        
+        # Ambil warna secara dinamis berdasarkan pH slider
+        liquid_color = hitung_warna_indikator(simulated_ph, selected_ind_data)
+        
+        # Visualisasi Gelas Beaker khas dengan border bersinar ungu neon
+        container_html = f"""
+        <div class="beaker-container">
+            <span style="font-size: 11px; font-weight: bold; color: #d8b4fe; display: block; margin-bottom: 15px; letter-spacing: 0.1em; font-family: monospace;">LABORATORIUM METRIK UNGU</span>
+            <div style="
+                width: 140px; 
+                height: 160px; 
+                border: 4px solid rgba(168, 85, 247, 0.4); 
+                border-top: none;
+                border-radius: 0 0 16px 16px; 
+                margin: 0 auto; 
+                position: relative;
+                box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+            ">
+                <!-- Cairan Kimia Reaktif -->
+                <div style="
+                    position: absolute; 
+                    bottom: 8px; 
+                    left: 6px; 
+                    right: 6px; 
+                    height: {int(simulated_ph * 4.5) + 50}px; 
+                    background-color: {liquid_color}; 
+                    border-radius: 0 0 10px 10px;
+                    transition: background-color 0.4s ease, height 0.4s ease;
+                    box-shadow: inset 0 4px 8px rgba(255,255,255,0.15);
+                "></div>
+                <!-- Garis Skala Pengukur -->
+                <div style="position: absolute; left: 10px; top: 30px; border-left: 2px solid rgba(168, 85, 247, 0.3); height: 100px; display: flex; flex-direction: column; justify-content: space-between; text-align: left; padding-left: 5px; font-size: 8px; font-family: monospace; color: #d8b4fe;">
+                    <span>-- 150ml</span>
+                    <span>-- 100ml</span>
+                    <span>-- 50ml</span>
+                </div>
+            </div>
+            <div style="margin-top: 20px; font-weight: bold; font-size: 20px; color: #f3e8ff; text-shadow: 0 0 8px {liquid_color};">
+                Nilai pH Cairan: <span style="color: {liquid_color};">{simulated_ph:.1f}</span>
+            </div>
+        </div>
+        """
+        st.markdown(container_html, unsafe_allow_html=True)
+        
+        # HUD Panel Informasi senyawa pilihan dengan aksen senada
+        st.markdown(f"""
+        <div class="chemical-hud">
+            <h4 style="margin-top:0px; color: #e9d5ff !important; font-family: monospace;">📋 INFORMASI SENYAWA</h4>
+            <b>Nama Senyawa:</b> {selected_chem['name']} ({selected_chem['formula']})<br/>
+            <b>Nama Populer:</b> {selected_chem['common']}<br/>
+            <b>Ionisasi Disosiasi:</b> <code>{selected_chem['dissociation']}</code><br/>
+            <b>Kategori Kelas:</b> {selected_chem['category']}
+        </div>
+        """, unsafe_allow_html=True)
 # ============================
 # 1. MENU DASHBOARD UTAMA
 # ============================
