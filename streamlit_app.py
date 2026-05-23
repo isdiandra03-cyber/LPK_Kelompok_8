@@ -2,7 +2,6 @@ import streamlit as st
 import time
 from datetime import datetime
 import pandas as pd
-import numpy as np
 
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(
@@ -11,35 +10,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CSS TAMBAHAN UNTUK TAMPILAN CANTIK ---
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f5f7fa;
-    }
-    .stButton>button {
-        width: 100%;
-        border-radius: 10px;
-        font-weight: bold;
-    }
-    .menu-card {
-        background-color: white;
-        background-color: black;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        margin-bottom: 20px;
-    }
-    .timer-display {
-        font-size: 80px;
-        font-weight: bold;
-        text-align: center;
-        color: #2c3e50;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 # --- INISIALISASI SESSION STATE ---
+if 'theme' not in st.session_state:
+    st.session_state.theme = "White"  # Default theme
+
 if 'tasks' not in st.session_state:
     st.session_state.tasks = []
 
@@ -47,13 +21,113 @@ if 'timer_running' not in st.session_state:
     st.session_state.timer_running = False
 
 if 'time_left' not in st.session_state:
-    st.session_state.time_left = 25 * 60  # 25 menit
+    st.session_state.time_left = 25 * 60
 
 if 'current_menu' not in st.session_state:
     st.session_state.current_menu = "🏠 Dashboard"
 
-# --- FUNGSI-FUNGSI ---
+# --- FUNGSI GANTI THEME ---
+def apply_theme(theme):
+    if theme == "White":
+        st.markdown("""
+            <style>
+            .stApp {
+                background-color: #ffffff;
+                color: #1a1a1a;
+            }
+            .menu-card {
+                background-color: #f8f9fa;
+                padding: 20px;
+                border-radius: 15px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            .task-item {
+                background-color: #f8f9fa;
+                border: 1px solid #ddd;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+    else:  # Black theme
+        st.markdown("""
+            <style>
+            .stApp {
+                background-color: #1a1a1a;
+                color: #f0f0f0;
+            }
+            .menu-card {
+                background-color: #2d2d2d;
+                padding: 20px;
+                border-radius: 15px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            }
+            .task-item {
+                background-color: #2d2d2d;
+                border: 1px solid #444;
+                color: #f0f0f0;
+            }
+            /* Ubah warna teks di Streamlit */
+            .stMarkdown, .stMarkdown p, h1, h2, h3, h4, h5, h6 {
+                color: #f0f0f0 !important;
+            }
+            .stTextInput > div > div > input {
+                background-color: #2d2d2d;
+                color: #f0f0f0;
+            }
+            </style>
+        """, unsafe_allow_html=True)
 
+# --- GANTI WARNA TOMBOL ---
+def get_button_style(theme):
+    if theme == "White":
+        return """
+            <style>
+            .stButton > button {
+                background-color: #3498db;
+                color: white;
+            }
+            </style>
+        """
+    else:
+        return """
+            <style>
+            .stButton > button {
+                background-color: #e74c3c;
+                color: white;
+            }
+            </style>
+        """
+
+# --- SIDEBAR + PENGATURAN THEME ---
+with st.sidebar:
+    st.title("⚙️ Pengaturan")
+    
+    # === PILIHAN THEME ===
+    st.subheader("🎨 Tema Background")
+    theme_option = st.radio(
+        "Pilih tema:",
+        ["White (Terang)", "Black (Gelap)"],
+        index=0 if st.session_state.theme == "White" else 1
+    )
+    
+    if "White" in theme_option:
+        st.session_state.theme = "White"
+    else:
+        st.session_state.theme = "Black"
+    
+    # Terapkan tema
+    apply_theme(st.session_state.theme)
+    st.markdown(get_button_style(st.session_state.theme), unsafe_allow_html=True)
+    
+    st.markdown("---")
+
+# --- MENU UTAMA SIDEBAR ---
+st.sidebar.title("📚 Menu Dashboard")
+menu_options = ["🏠 Dashboard", "✅ To-Do List", "⏱️ Timer Belajar", "🎵 Musik Fokus", "🎨 Indikator Warna"]
+selected_menu = st.sidebar.radio("Pilih Menu:", menu_options)
+
+st.session_state.current_menu = selected_menu
+
+# --- FUNGSI-FUNGSI ---
 def add_task(task_name):
     if task_name:
         st.session_state.tasks.append({
@@ -68,12 +142,147 @@ def toggle_task(index):
 def delete_task(index):
     st.session_state.tasks.pop(index)
 
-# --- SIDEBAR MENU ---
-st.sidebar.title("📚 Menu Dashboard")
-menu_options = ["🏠 Dashboard", "🧪ChemClass-Indicator", "✅ To-Do List", "⏱️ Study timer", "🎵 lo-fi"]
-selected_menu = st.sidebar.radio("Pilih Menu:", menu_options, index=menu_options.index(st.session_state.current_menu) if st.session_state.current_menu in menu_options else 0)
+# ============================================
+# ISI KONTEN (SAMA SEPERTI SEBELUMNYA)
+# ============================================
 
-st.session_state.current_menu = selected_menu
+if selected_menu == "🏠 Dashboard":
+    st.markdown("# 📚 Dashboard Belajar")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("📝 Total Tugas", len(st.session_state.tasks))
+    with col2:
+        tugas_belum = sum(1 for t in st.session_state.tasks if not t["done"])
+        st.metric("⏳ Tugas Tertunda", tugas_belum)
+    with col3:
+        tugas_selesai = sum(1 for t in st.session_state.tasks if t["done"])
+        st.metric("✅ Tugas Selesai", tugas_selesai)
+    with col4:
+        st.metric("🎨 Tema", st.session_state.theme)
+
+elif selected_menu == "✅ To-Do List":
+    st.markdown("# 📝 To-Do List Harian")
+    
+    col_input1, col_input2 = st.columns([4, 1])
+    with col_input1:
+        new_task = st.text_input("Tambah tugas baru:", placeholder="Contoh: Mengerjakan PR Matematika")
+    with col_input2:
+        if st.button("➕ Tambah", type="primary"):
+            add_task(new_task)
+            st.rerun()
+    
+    st.markdown("---")
+    
+    for i, task in enumerate(st.session_state.tasks):
+        col1, col2, col3 = st.columns([1, 6, 1])
+        
+        with col1:
+            st.checkbox("", value=task["done"], key=f"check_{i}", on_change=toggle_task, args=(i,))
+        
+        with col2:
+            if task["done"]:
+                st.markdown(f"~~{task['name']}~~ ✅")
+            else:
+                st.markdown(f"**{task['name']}**")
+        
+        with col3:
+            if st.button("🗑️", key=f"del_{i}"):
+                delete_task(i)
+                st.rerun()
+
+elif selected_menu == "⏱️ Timer Belajar":
+    st.markdown("# ⏱️ Timer Belajar (Pomodoro)")
+    
+    col_timer1, col_timer2 = st.columns([1, 1])
+    
+    with col_timer1:
+        mode = st.selectbox("Pilih Mode:", ["25 menit (Belajar)", "5 menit (Istirahat)", "15 menit (Istirahat Panjang)"])
+        
+        if mode == "25 menit (Belajar)":
+            default_time = 25 * 60
+        elif mode == "5 menit (Istirahat)":
+            default_time = 5 * 60
+        else:
+            default_time = 15 * 60
+        
+        if st.button("🔄 Reset Timer"):
+            st.session_state.time_left = default_time
+            st.session_state.timer_running = False
+            st.rerun()
+    
+    with col_timer2:
+        menit = st.session_state.time_left // 60
+        detik = st.session_state.time_left % 60
+        waktu_formatted = f"{menit:02d}:{detik:02d}"
+        
+        if menit <= 5:
+            warna = "🔴"
+        elif menit <= 10:
+            warna = "🟡"
+        else:
+            warna = "🟢"
+        
+        st.markdown(f"""
+        <div style='text-align: center; padding: 50px; border-radius: 20px;'>
+            <h1 style='font-size: 100px; margin: 0;'>{waktu_formatted}</h1>
+            <p style='font-size: 24px;'>{warna} Status</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col_k1, col_k2 = st.columns(2)
+        with col_k1:
+            if st.button("▶️ MULAI", type="primary"):
+                st.session_state.timer_running = True
+                st.rerun()
+        with col_k2:
+            if st.button("⏹️ BERHENTI"):
+                st.session_state.timer_running = False
+                st.rerun()
+    
+    if st.session_state.timer_running:
+        if st.session_state.time_left > 0:
+            time.sleep(1)
+            st.session_state.time_left -= 1
+            st.rerun()
+        else:
+            st.session_state.timer_running = False
+            st.balloons()
+            st.success("⏰ Waktu selesai!")
+
+elif selected_menu == "🎵 Musik Fokus":
+    st.markdown("# 🎵 Musik Fokus")
+    
+    musik_options = {
+        "🎵 Lo-Fi Chill Beats": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        "🌊 Ambient Nature": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+        "🌙 Piano Relaksasi": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+    }
+    
+    selected_music = st.selectbox("Pilih Trek:", list(musik_options.keys()))
+    st.audio(musik_options[selected_music], format='audio/mp3')
+
+elif selected_menu == "🎨 Indikator Warna":
+    st.markdown("# 🎨 Indikator Warna")
+    
+    total = len(st.session_state.tasks)
+    if total > 0:
+        selesai = sum(1 for t in st.session_state.tasks if t["done"])
+        progress = selesai / total
+        st.progress(progress)
+        st.write(f"**Progres:** {int(progress * 100)}%")
+        
+        if progress >= 1.0:
+            st.success("✅ Semua tugas selesai!")
+        elif progress >= 0.7:
+            st.info("🟡 Hampir selesai!")
+        elif progress >= 0.3:
+            st.warning("🟠 Sedang berjalan...")
+        else:
+            st.error("🔴 Baru memulai!")
+    else:
+        st.info("Belum ada tugas.")
 
 # --- LOGIKA TAMPILAN PER MENU ---
 
