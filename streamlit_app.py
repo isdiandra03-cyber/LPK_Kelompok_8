@@ -284,91 +284,150 @@ elif selected_menu == "🎨 Indikator Warna":
     else:
         st.info("Belum ada tugas.")
 
-# --- LOGIKA TAMPILAN PER MENU ---
+# ============================================
+# ISI KONTEN (SAMA SEPERTI SEBELUMNYA)
+# ============================================
 
-# ==========================================
-# TAB 1: LAB SIMULATOR
-# ==========================================
-with menu[0]:
-    col_input, col_display = st.columns([5, 7])
+if selected_menu == "🏠 Dashboard":
+    st.markdown("# 📚 Dashboard Belajar")
     
-    with col_input:
-        st.subheader("💡 Parameter Simulasi")
-        
-        # Pilihan Preset Senyawa
-        preset_names = [chem["name"] for chem in CHEMICALS]
-        pilihan_preset = st.selectbox("Pilih Preset Zat Kimia:", preset_names, index=2) # Default cuka
-        selected_chem = next(chem for chem in CHEMICALS if chem["name"] == pilihan_preset)
-        
-        # Pilihan Indikator
-        pilihan_ind = st.selectbox(
-            "Pilihan Kertas Indikator:",
-            options=list(INDICATORS.keys()),
-            format_func=lambda x: INDICATORS[x]["name"]
-        )
-        selected_ind_data = INDICATORS[pilihan_ind]
-        
-        # Slider pH Manual
-        st.write("---")
-        st.markdown("**Kontrol pH Manual (Dial):** Modifikasi nilai derajat keasaman secara langsung")
-        simulated_ph = st.slider("Mengatur pH:", min_value=0.0, max_value=14.0, value=selected_chem["pH"], step=0.1)
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("📝 Total Tugas", len(st.session_state.tasks))
+    with col2:
+        tugas_belum = sum(1 for t in st.session_state.tasks if not t["done"])
+        st.metric("⏳ Tugas Tertunda", tugas_belum)
+    with col3:
+        tugas_selesai = sum(1 for t in st.session_state.tasks if t["done"])
+        st.metric("✅ Tugas Selesai", tugas_selesai)
+    with col4:
+        st.metric("🎨 Tema", st.session_state.theme)
 
-    with col_display:
-        st.subheader("🔮 Simulator Beaker Reaktif")
+elif selected_menu == "✅ To-Do List":
+    st.markdown("# 📝 To-Do List Harian")
+    
+    col_input1, col_input2 = st.columns([4, 1])
+    with col_input1:
+        new_task = st.text_input("Tambah tugas baru:", placeholder="Contoh: Mengerjakan PR Matematika")
+    with col_input2:
+        if st.button("➕ Tambah", type="primary"):
+            add_task(new_task)
+            st.rerun()
+    
+    st.markdown("---")
+    
+    for i, task in enumerate(st.session_state.tasks):
+        col1, col2, col3 = st.columns([1, 6, 1])
         
-        # Ambil warna secara dinamis berdasarkan pH slider
-        liquid_color = hitung_warna_indikator(simulated_ph, selected_ind_data)
+        with col1:
+            st.checkbox("", value=task["done"], key=f"check_{i}", on_change=toggle_task, args=(i,))
         
-        # Visualisasi Gelas Beaker khas dengan border bersinar ungu neon
-        container_html = f"""
-        <div class="beaker-container">
-            <span style="font-size: 11px; font-weight: bold; color: #d8b4fe; display: block; margin-bottom: 15px; letter-spacing: 0.1em; font-family: monospace;">LABORATORIUM METRIK UNGU</span>
-            <div style="
-                width: 140px; 
-                height: 160px; 
-                border: 4px solid rgba(168, 85, 247, 0.4); 
-                border-top: none;
-                border-radius: 0 0 16px 16px; 
-                margin: 0 auto; 
-                position: relative;
-                box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
-            ">
-                <!-- Cairan Kimia Reaktif -->
-                <div style="
-                    position: absolute; 
-                    bottom: 8px; 
-                    left: 6px; 
-                    right: 6px; 
-                    height: {int(simulated_ph * 4.5) + 50}px; 
-                    background-color: {liquid_color}; 
-                    border-radius: 0 0 10px 10px;
-                    transition: background-color 0.4s ease, height 0.4s ease;
-                    box-shadow: inset 0 4px 8px rgba(255,255,255,0.15);
-                "></div>
-                <!-- Garis Skala Pengukur -->
-                <div style="position: absolute; left: 10px; top: 30px; border-left: 2px solid rgba(168, 85, 247, 0.3); height: 100px; display: flex; flex-direction: column; justify-content: space-between; text-align: left; padding-left: 5px; font-size: 8px; font-family: monospace; color: #d8b4fe;">
-                    <span>-- 150ml</span>
-                    <span>-- 100ml</span>
-                    <span>-- 50ml</span>
-                </div>
-            </div>
-            <div style="margin-top: 20px; font-weight: bold; font-size: 20px; color: #f3e8ff; text-shadow: 0 0 8px {liquid_color};">
-                Nilai pH Cairan: <span style="color: {liquid_color};">{simulated_ph:.1f}</span>
-            </div>
-        </div>
-        """
-        st.markdown(container_html, unsafe_allow_html=True)
+        with col2:
+            if task["done"]:
+                st.markdown(f"~~{task['name']}~~ ✅")
+            else:
+                st.markdown(f"**{task['name']}**")
         
-        # HUD Panel Informasi senyawa pilihan dengan aksen senada
+        with col3:
+            if st.button("🗑️", key=f"del_{i}"):
+                delete_task(i)
+                st.rerun()
+
+elif selected_menu == "⏱️ Timer Belajar":
+    st.markdown("# ⏱️ Timer Belajar (Pomodoro)")
+    
+    col_timer1, col_timer2 = st.columns([1, 1])
+    
+    with col_timer1:
+        mode = st.selectbox("Pilih Mode:", ["25 menit (Belajar)", "5 menit (Istirahat)", "15 menit (Istirahat Panjang)"])
+        
+        if mode == "25 menit (Belajar)":
+            default_time = 25 * 60
+        elif mode == "5 menit (Istirahat)":
+            default_time = 5 * 60
+        else:
+            default_time = 15 * 60
+        
+        if st.button("🔄 Reset Timer"):
+            st.session_state.time_left = default_time
+            st.session_state.timer_running = False
+            st.rerun()
+    
+    with col_timer2:
+        menit = st.session_state.time_left // 60
+        detik = st.session_state.time_left % 60
+        waktu_formatted = f"{menit:02d}:{detik:02d}"
+        
+        if menit <= 5:
+            warna = "🔴"
+        elif menit <= 10:
+            warna = "🟡"
+        else:
+            warna = "🟢"
+        
         st.markdown(f"""
-        <div class="chemical-hud">
-            <h4 style="margin-top:0px; color: #e9d5ff !important; font-family: monospace;">📋 INFORMASI SENYAWA</h4>
-            <b>Nama Senyawa:</b> {selected_chem['name']} ({selected_chem['formula']})<br/>
-            <b>Nama Populer:</b> {selected_chem['common']}<br/>
-            <b>Ionisasi Disosiasi:</b> <code>{selected_chem['dissociation']}</code><br/>
-            <b>Kategori Kelas:</b> {selected_chem['category']}
+        <div style='text-align: center; padding: 50px; border-radius: 20px;'>
+            <h1 style='font-size: 100px; margin: 0;'>{waktu_formatted}</h1>
+            <p style='font-size: 24px;'>{warna} Status</p>
         </div>
         """, unsafe_allow_html=True)
+        
+        col_k1, col_k2 = st.columns(2)
+        with col_k1:
+            if st.button("▶️ MULAI", type="primary"):
+                st.session_state.timer_running = True
+                st.rerun()
+        with col_k2:
+            if st.button("⏹️ BERHENTI"):
+                st.session_state.timer_running = False
+                st.rerun()
+    
+    if st.session_state.timer_running:
+        if st.session_state.time_left > 0:
+            time.sleep(1)
+            st.session_state.time_left -= 1
+            st.rerun()
+        else:
+            st.session_state.timer_running = False
+            st.balloons()
+            st.success("⏰ Waktu selesai!")
+
+elif selected_menu == "🎵 Musik Fokus":
+    st.markdown("# 🎵 Musik Fokus")
+    
+    musik_options = {
+        "🎵 Lo-Fi Chill Beats": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        "🌊 Ambient Nature": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+        "🌙 Piano Relaksasi": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+    }
+    
+    selected_music = st.selectbox("Pilih Trek:", list(musik_options.keys()))
+    st.audio(musik_options[selected_music], format='audio/mp3')
+
+elif selected_menu == "🎨 Indikator Warna":
+    st.markdown("# 🎨 Indikator Warna")
+    
+    total = len(st.session_state.tasks)
+    if total > 0:
+        selesai = sum(1 for t in st.session_state.tasks if t["done"])
+        progress = selesai / total
+        st.progress(progress)
+        st.write(f"**Progres:** {int(progress * 100)}%")
+        
+        if progress >= 1.0:
+            st.success("✅ Semua tugas selesai!")
+        elif progress >= 0.7:
+            st.info("🟡 Hampir selesai!")
+        elif progress >= 0.3:
+            st.warning("🟠 Sedang berjalan...")
+        else:
+            st.error("🔴 Baru memulai!")
+    else:
+        st.info("Belum ada tugas.")
+
+# --- LOGIKA TAMPILAN PER MENU ---
+
 # ============================
 # 1. MENU DASHBOARD UTAMA
 # ============================
